@@ -39,7 +39,7 @@
 </script>
 
 <main>
-  <h1>hiyat</h1>
+  <h1>Example</h1>
   {#await fetchImage}
     <p>...waiting</p>
   {:then data}

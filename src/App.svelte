@@ -44,8 +44,8 @@
 <main>
   <UIShell
     href="https://appsilon.com"
-    company="Appsilon"
-    platformName="SvelteShowcase" />
+    company="Svelte"
+    platformName="Visualizer" />
   <br />
   <br />
   <br />

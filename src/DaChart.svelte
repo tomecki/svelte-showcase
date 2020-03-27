@@ -29,6 +29,11 @@
 
     return filteredBelowStartAt;
   };
+  $: if (toggled) {
+
+      value = Math.max(1, value);
+      console.log("toggled sanity" + value);
+  }
   const getPlotBounds = function(plotData) {
     let minx = +Infinity;
     let maxx = -Infinity;
@@ -160,7 +165,7 @@
   bind:items />
 <NumberInput min="0" max="1000" bind:value />
 <Toggle bind:toggled />
-<!-- {JSON.stringify(plotData)} -->
+{JSON.stringify(selectedIds)}
 <div class="chart">
   <Pancake.Chart
     x1={plotBounds.minx}
