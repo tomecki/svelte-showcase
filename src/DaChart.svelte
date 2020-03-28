@@ -271,4 +271,5 @@
 
     <Pancake.Quadtree data={points} bind:closest />
   </Pancake.Chart>
+  
 </div>

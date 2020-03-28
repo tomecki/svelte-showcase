@@ -8,7 +8,7 @@
   const fixedKeys = ["Country/Region", "Province/State", "Lat", "Long"];
   const fetchImage = (async () => {
     return await d3
-      .csv("/time_series_covid_19_confirmed.csv")
+      .csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv")
       .then(function(data) {
         return preprocessCsv(data);
       });
