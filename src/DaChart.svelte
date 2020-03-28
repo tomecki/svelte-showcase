@@ -1,27 +1,41 @@
 <script>
   export let data = [];
   import * as Pancake from "@sveltejs/pancake";
-  import { NumberInput, MultiSelect, Toggle } from "carbon-components-svelte";
+  import {
+    NumberInput,
+    MultiSelect,
+    RadioButtonGroup,
+    RadioButton,
+    Tag,
+    Form,
+    FormGroup,
+    FormLabel,
+    Button
+  } from "carbon-components-svelte";
+  import { writable } from "svelte/store";
   let closest;
   let country;
-  let startAt = 100;
   let value = 0;
-  let selectedIds = [];
-  const preparePlotData = function(data, startAt, selectedIds, logarithmic) {
-    console.log(logarithmic);
+  let y_axis = writable("linear");
+  let startAt = writable(0);
+  const DEFAULT_COUNTRIES = ["Poland", "Germany", "Korea, South", "US"];
+
+  let selectedIds = DEFAULT_COUNTRIES;
+  const preparePlotData = function(data, startAt, selectedIds, y_axis) {
     let filteredBelowStartAt = Object.keys(data)
       .filter(country =>
         selectedIds.length > 0 ? selectedIds.includes(country) : true
       )
       .map(x => {
-        let filtered = data[x].filter(point => point.y >= startAt);
+        let filtered = data[x].filter(point => point.raw >= startAt);
         return {
           name: x,
           data:
             filtered.length > 0
               ? filtered.map(point => ({
                   x: point.x - filtered[0].x,
-                  y: logarithmic ? Math.log10(point.y) : point.y
+                  y: $y_axis === "logarithmic" ? Math.log10(point.raw) : point.raw,
+                  raw: point.raw
                 }))
               : []
         };
@@ -29,10 +43,8 @@
 
     return filteredBelowStartAt;
   };
-  $: if (toggled) {
-
-      value = Math.max(1, value);
-      console.log("toggled sanity" + value);
+  $: if ($y_axis === "logarithmic") {
+    $startAt = Math.max(1, $startAt);
   }
   const getPlotBounds = function(plotData) {
     let minx = +Infinity;
@@ -54,23 +66,29 @@
       maxy: maxy
     };
   };
-
-  let toggled = false;
-  $: plotData = preparePlotData(data, value, selectedIds, toggled);
+  const teststore = writable("xd");
+  $: plotData = preparePlotData(data, $startAt, selectedIds, $y_axis);
   $: plotBounds = getPlotBounds(plotData);
-  let items = Object.keys(data).map(data => ({ id: data, text: data })); //Object.keys(data).map(data => ({ id: data.name, text: data.name }));
-  //   $: points = filtered.reduce((plotData, country) => {
-  //     return points.concat(
-  //       country.data.map(d => ({
-  //         x: d.x,
-  //         y: d.y,
-  //         country
-  //       }))
-  //     );
-  //   }, []);
+  let items = Object.keys(data).map(data => ({ id: data, text: data }));
+  $: points = plotData.reduce((points, country) => {
+    return points.concat(
+      country.data.map(d => ({
+        x: d.x,
+        y: d.y,
+        raw: d.raw,
+        country
+      }))
+    );
+  }, []);
 </script>
 
 <style>
+  #multiselect {
+    grid-column-start: 1;
+    grid-column-end: 3;
+    grid-row: 1;
+  }
+
   .chart {
     height: 400px;
     padding: 3em 0 2em 2em;
@@ -156,16 +174,61 @@
     display: block;
     font-size: 14px;
   }
+  #formGrid {
+    display: grid;
+    grid-row-gap: 1em;
+    grid-column-gap: 1em;
+  }
+  #numberInput {
+    grid-row: 2;
+    grid-column: 1;
+  }
+  #yaxisInput {
+    grid-row: 2;
+    grid-column: 3;
+  }
 </style>
-<MultiSelect
-  id="multiselect"
-  placeholder="Filter countries..."
-  bind:selectedIds
-  filterable = {true}
-  bind:items />
-<NumberInput min="0" max="1000" bind:value />
-<Toggle bind:toggled />
-{JSON.stringify(selectedIds)}
+
+<Form>
+  <div id="formGrid">
+    <div id="multiselect">
+      <MultiSelect
+        placeholder="Filter countries..."
+        helperText="Countries"
+        bind:selectedIds
+        filterable={true}
+        bind:items />
+      <Button on:click={() => (selectedIds = DEFAULT_COUNTRIES)}>
+        Default countries
+      </Button>
+
+    </div>
+    <div id="defaultButton" />
+    <div id="numberInput">
+      <NumberInput
+        label="Discard until cases above"
+        labelmin="0"
+        max="1000"
+        bind:value={$startAt} />
+    </div>
+    <div id="yaxisInput">
+      <FormGroup legendText="Y Axis scale">
+        <RadioButtonGroup  bind:selected={$y_axis}>
+          <RadioButton value="linear" id="linear" labelText="Linear" />
+          <RadioButton
+            value="logarithmic"
+            id="logarithmic"
+            labelText="Logarithmic" />
+        </RadioButtonGroup>
+      </FormGroup>
+    </div>
+  </div>
+</Form>
+<div>
+  {#each selectedIds as country}
+    <Tag type="blue">{country}</Tag>
+  {/each}
+</div>
 <div class="chart">
   <Pancake.Chart
     x1={plotBounds.minx}
@@ -189,23 +252,23 @@
         </Pancake.SvgLine>
       {/each}
 
-      <!--		{#if closest}
-				<Pancake.SvgLine data={closest.country.data} let:d>
-					<path class="highlight" {d}></path>
-				</Pancake.SvgLine>
-			{/if} -->
+      {#if closest}
+        <Pancake.SvgLine data={closest.country.data} let:d>
+          <path class="highlight" {d} />
+        </Pancake.SvgLine>
+      {/if}
     </Pancake.Svg>
 
-    <!-- {#if closest}
+    {#if closest}
 			<Pancake.Point x={closest.x} y={closest.y}>
 				<span class="annotation-point"></span>
-				<div class="annotation" style="transform: translate(-{100 * ((closest.x - x1) / (x2 - x1))}%,0)">
+				<div class="annotation" style="transform: translate(-{100 * ((closest.x - plotBounds.minx) / (plotBounds.maxx - plotBounds.minx))}%,0)">
 					<strong>{closest.country.name}</strong>
-					<span>{closest.x}: {closest.y} years</span>
+					<span>Day {closest.x}: {closest.raw} Cases</span>
 				</div>
 			</Pancake.Point>
-		{/if} -->
+		{/if}
 
-    <!-- <Pancake.Quadtree data={points} bind:closest /> -->
+    <Pancake.Quadtree data={points} bind:closest />
   </Pancake.Chart>
 </div>
